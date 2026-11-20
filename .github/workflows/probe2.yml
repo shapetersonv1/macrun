@@ -1,0 +1,7 @@
+name: probe2
+on: [push]
+jobs:
+  m:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "ALIVE $(date -u)"; curl -s -m 10 https://ipinfo.io/ip
