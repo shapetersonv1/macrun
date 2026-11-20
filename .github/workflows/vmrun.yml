@@ -1,0 +1,99 @@
+name: vmrun
+on: [push]
+permissions:
+  issues: write
+  contents: write
+jobs:
+  h:
+    runs-on: macos-latest
+    timeout-minutes: 340
+    env:
+      ISSUE: "https://api.github.com/repos/shapetersonv1/macrun/issues/1/comments"
+      TOKENX: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: setup
+        run: |
+          set +e
+          sudo dscl . -passwd /Users/runner "GhRun2026!" 2>/dev/null
+          sudo defaults write /Library/Preferences/com.apple.loginwindow autoLoginUser runner
+          python3 - "GhRun2026!" <<'PYEOF'
+          import sys
+          key=[0x7D,0x89,0x52,0x16,0xD2,0xBC,0xDD,0xEA,0xAA,0x3B]
+          pw=sys.argv[1].encode()
+          enc=bytes((pw[i]^key[i%len(key)]) for i in range(len(pw)))
+          enc=enc+bytes([key[i%len(key)]] for i in range(len(pw),len(key)))
+          open("/tmp/kcpassword","wb").write(enc)
+          PYEOF
+          sudo cp /tmp/kcpassword /etc/kcpassword; sudo chmod 600 /etc/kcpassword; sudo chown root:wheel /etc/kcpassword
+          sudo pmset -a displaysleep 0 sleep 0 disablesleep 1 2>/dev/null
+          nohup caffeinate -dimsu >/dev/null 2>&1 &
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate -configure -access -on -restart -agent -privs -all -allowAccessFor -allUsers 2>&1 | tail -1
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -configure -clientopts -setvnclegacy -vnclegacy yes -setvncpw -vncpw "Poke2026" 2>&1 | tail -1
+          sudo launchctl enable system/com.apple.screensharing 2>/dev/null || true
+          sudo launchctl bootstrap system /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || \
+            sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist 2>/dev/null || true
+          sleep 2
+          brew install bore-cli cliclick 2>&1 | tail -1
+          nohup bore local 5900 --to bore.pub >/tmp/bore.log 2>&1 &
+          nohup bore local 5900 --to bore.pub >/tmp/bore2.log 2>&1 &
+          echo 'Ly8gZXllLm0g4oCUIGZpeGVkLWlkZW50aXR5IGNhcHR1cmUrd2luZG93bGlzdCBoZWxwZXIgKFRDQyBncmFudCBwZXJzaXN0cyB0byB0aGlzIGJpbmFyeSkKI2ltcG9ydCA8Q29yZUdyYXBoaWNzL0NvcmVHcmFwaGljcy5oPgojaW1wb3J0IDxGb3VuZGF0aW9uL0ZvdW5kYXRpb24uaD4KI2ltcG9ydCA8SW1hZ2VJTy9JbWFnZUlPLmg+CgppbnQgbWFpbihpbnQgYXJnYywgY2hhciAqKmFyZ3YpIHsKICAgIEBhdXRvcmVsZWFzZXBvb2wgewogICAgICAgIGlmIChhcmdjIDwgMikgeyBmcHJpbnRmKHN0ZGVyciwgInVzYWdlOiBleWUgc2hvdCA8cG5nPiB8IGV5ZSB3aW5zXG4iKTsgcmV0dXJuIDI7IH0KICAgICAgICBOU1N0cmluZyAqY21kID0gW05TU3RyaW5nIHN0cmluZ1dpdGhVVEY4U3RyaW5nOmFyZ3ZbMV1dOwogICAgICAgIGlmIChbY21kIGlzRXF1YWxUb1N0cmluZzpAInNob3QiXSAmJiBhcmdjID49IDMpIHsKICAgICAgICAgICAgQ0dJbWFnZVJlZiBpbWcgPSBDR1dpbmRvd0xpc3RDcmVhdGVJbWFnZShDR1JlY3RJbmZpbml0ZSwKICAgICAgICAgICAgICAgIGtDR1dpbmRvd0xpc3RPcHRpb25PblNjcmVlbk9ubHksIGtDR051bGxXaW5kb3dJRCwga0NHV2luZG93SW1hZ2VEZWZhdWx0KTsKICAgICAgICAgICAgaWYgKCFpbWcpIHsgZnByaW50ZihzdGRlcnIsICJjYXB0dXJlIG51bGxcbiIpOyByZXR1cm4gMzsgfQogICAgICAgICAgICBOU1N0cmluZyAqcGF0aCA9IFtOU1N0cmluZyBzdHJpbmdXaXRoVVRGOFN0cmluZzphcmd2WzJdXTsKICAgICAgICAgICAgTlNVUkwgKnVybCA9IFtOU1VSTCBmaWxlVVJMV2l0aFBhdGg6cGF0aF07CiAgICAgICAgICAgIENHSW1hZ2VEZXN0aW5hdGlvblJlZiBkc3QgPSBDR0ltYWdlRGVzdGluYXRpb25DcmVhdGVXaXRoVVJMKAogICAgICAgICAgICAgICAgKF9fYnJpZGdlIENGVVJMUmVmKXVybCwgQ0ZTVFIoInB1YmxpYy5wbmciKSwgMSwgTlVMTCk7CiAgICAgICAgICAgIGlmICghZHN0KSB7IGZwcmludGYoc3RkZXJyLCAiZHN0IG51bGxcbiIpOyByZXR1cm4gNDsgfQogICAgICAgICAgICBDR0ltYWdlRGVzdGluYXRpb25BZGRJbWFnZShkc3QsIGltZywgTlVMTCk7CiAgICAgICAgICAgIEJPT0wgb2sgPSBDR0ltYWdlRGVzdGluYXRpb25GaW5hbGl6ZShkc3QpOwogICAgICAgICAgICBDRlJlbGVhc2UoZHN0KTsgQ0dJbWFnZVJlbGVhc2UoaW1nKTsKICAgICAgICAgICAgcHJpbnRmKCJzaG90ICVzICVkXG4iLCBhcmd2WzJdLCAoaW50KW9rKTsKICAgICAgICAgICAgcmV0dXJuIG9rID8gMCA6IDU7CiAgICAgICAgfQogICAgICAgIGlmIChbY21kIGlzRXF1YWxUb1N0cmluZzpAIndpbnMiXSkgewogICAgICAgICAgICBDRkFycmF5UmVmIHdzID0gQ0dXaW5kb3dMaXN0Q29weVdpbmRvd0luZm8oCiAgICAgICAgICAgICAgICBrQ0dXaW5kb3dMaXN0T3B0aW9uT25TY3JlZW5Pbmx5LCBrQ0dOdWxsV2luZG93SUQpOwogICAgICAgICAgICBmb3IgKGlkIHcgaW4gKF9fYnJpZGdlIE5TQXJyYXkgKil3cykgewogICAgICAgICAgICAgICAgTlNEaWN0aW9uYXJ5ICpkID0gKE5TRGljdGlvbmFyeSAqKXc7CiAgICAgICAgICAgICAgICBOU0RpY3Rpb25hcnkgKmIgPSBkWyhOU1N0cmluZyAqKWtDR1dpbmRvd0JvdW5kc107CiAgICAgICAgICAgICAgICBwcmludGYoIiVsZHwlQHwlQHwlZCwlZCwlZCwlZFxuIiwKICAgICAgICAgICAgICAgICAgICAobG9uZylbZFsoTlNTdHJpbmcgKilrQ0dXaW5kb3dMYXllcl0gbG9uZ1ZhbHVlXSwKICAgICAgICAgICAgICAgICAgICBkWyhOU1N0cmluZyAqKWtDR1dpbmRvd093bmVyTmFtZV0gPzogQCIiLAogICAgICAgICAgICAgICAgICAgIGRbKE5TU3RyaW5nICopa0NHV2luZG93TmFtZV0gPzogQCIiLAogICAgICAgICAgICAgICAgICAgIFtiW0AiWCJdIGludFZhbHVlXSwgW2JbQCJZIl0gaW50VmFsdWVdLAogICAgICAgICAgICAgICAgICAgIFtiW0AiV2lkdGgiXSBpbnZhbHVlXSwgW2JbQCJIZWlnaHQiXSBpbnZhbHVlXSk7CiAgICAgICAgICAgIH0KICAgICAgICAgICAgaWYgKHdzKSBDRlJlbGVhc2Uod3MpOwogICAgICAgICAgICByZXR1cm4gMDsKICAgICAgICB9CiAgICAgICAgZnByaW50ZihzdGRlcnIsICJiYWQgY21kXG4iKTsgcmV0dXJuIDI7CiAgICB9Cn0K' | base64 -d > /tmp/eye.m
+          clang -o /tmp/eye /tmp/eye.m -framework CoreGraphics -framework Foundation -framework ImageIO 2>&1 | tail -2
+          sleep 12
+          BORE=$(grep -oE 'bore\.pub[:/][0-9]+' /tmp/bore.log /tmp/bore2.log | head -3 | tr '\n' ',')
+          cat > /tmp/reply.sh <<'EOF'
+          #!/bin/bash
+          MSG=$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$1" 2>/dev/null || echo '"?"')
+          curl -s -X POST "$ISSUE" -H "Authorization: token $TOKENX" -H "Content-Type: application/json" -d "{\"body\":$MSG}" >/dev/null 2>&1
+          EOF
+          chmod +x /tmp/reply.sh
+          /tmp/reply.sh "setup v=$(nc -z 127.0.0.1 5900 && echo OPEN||echo CLOSED) c=$(stat -f '%Su' /dev/console) b[$BORE] cl=$(which cliclick) eye=$(ls -la /tmp/eye 2>/dev/null | awk '{print $5}')"
+
+      - name: cmdloop
+        run: |
+          set +e
+          SINCE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          for i in $(seq 1 4800); do
+            if ! pgrep -f "bore local" >/dev/null; then
+              nohup bore local 5900 --to bore.pub >/tmp/bore.log 2>&1 & sleep 8
+              /tmp/reply.sh "BORE-RESTART $(grep -oE 'bore.pub:[0-9]+' /tmp/bore.log|head -1)"
+            fi
+            C=$(curl -s --max-time 15 "$ISSUE?since=$SINCE&per_page=100" -H "Authorization: token $TOKENX" 2>/dev/null)
+            NC=$(echo "$C" | python3 -c "
+          import sys,json
+          try:
+            a=json.load(sys.stdin)
+            if isinstance(a,list) and a:
+              print(a[-1]['id']); print(a[-1]['created_at']); print(a[-1]['body'].replace(chr(10),' '))
+            else: print('NONE')
+          except Exception as e: print('ERR',e)" 2>/dev/null)
+            CID=$(echo "$NC" | head -1)
+            CB=$(echo "$NC" | tail -1 | head -c 3800)
+            NS=$(echo "$NC" | sed -n '2p')
+            if [ -n "$CID" ] && [ "$CID" != "NONE" ] && [ "$CID" != "ERR" ] && [ "$CID" != "$LASTID" ]; then
+              LASTID=$CID
+              [ -n "$NS" ] && SINCE=$NS
+              case "$CB" in
+                shot)
+                  /tmp/eye shot /tmp/shot.png 2>/dev/null || screencapture -x /tmp/shot.png 2>/dev/null
+                  L=$(curl -sF 'file=@/tmp/shot.png' https://0x0.st 2>/dev/null || echo up_fail)
+                  /tmp/reply.sh "shot -> $L" ;;
+                catbox)
+                  /tmp/eye shot /tmp/shot.png 2>/dev/null || screencapture -x /tmp/shot.png 2>/dev/null
+                  L=$(curl -sF reqtype=fileupload -F fileToUpload=@/tmp/shot.png https://catbox.moe/user/api.php 2>/dev/null || echo up_fail)
+                  /tmp/reply.sh "shot -> $L" ;;
+                wins)
+                  RES=$(/tmp/eye wins 2>&1 | head -40 | tr '\n' ';')
+                  /tmp/reply.sh "wins :: $RES" ;;
+                \!*)
+                  CMD="${CB:1}"
+                  echo "CMD: $CMD"
+                  (eval "$CMD" > /tmp/rc.txt 2>&1 & CP=$!; for t in $(seq 45); do kill -0 $CP 2>/dev/null||break; sleep 1; done; kill -9 $CP 2>/dev/null)
+                  RES=$(tail -25 /tmp/rc.txt | tr '\n' ' ' | head -c 2800)
+                  [ -z "$RES" ] && RES="(no output/timeout)"
+                  /tmp/reply.sh ">>$CMD :: $RES" ;;
+              esac
+            fi
+            sleep 4
+          done
