@@ -1,0 +1,7 @@
+name: probe3
+on: [push]
+jobs:
+  m:
+    runs-on: macos-latest
+    steps:
+      - run: echo "ALIVE"; sw_vers
